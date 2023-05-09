@@ -1,5 +1,4 @@
 import io
-import os
 from dct import my_dct, my_idct
 import numpy as np
 from PIL import Image
