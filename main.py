@@ -121,6 +121,8 @@ class Cox:
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
             dct_block = my_dct(block)
+            # print(dct_block)
+            # exit()
             mid_freq_coeffs = np.asarray([dct_block[3, 4], dct_block[4, 3]])
 
             if np.abs(mid_freq_coeffs[0]) > np.abs(mid_freq_coeffs[1]):
