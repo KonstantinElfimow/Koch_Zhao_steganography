@@ -99,7 +99,7 @@ class Cox:
             # exit()
             pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8] = modified_block
         # сохранение изображения в формате JPEG
-        Image.fromarray(pixels, mode='L').save(new_image, qtables=quantization_table)
+        Image.fromarray(pixels).save(new_image, qtables=quantization_table)
         self.__occupancy = len(binary_seq)
         return True
 
@@ -117,7 +117,7 @@ class Cox:
         np.random.seed()
 
         buffer_binary = io.StringIO()
-        for start_point in start_points[:self.__occupancy + 1]:
+        for start_point in start_points[:self.__occupancy]:
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
             dct_block = my_dct(block)
