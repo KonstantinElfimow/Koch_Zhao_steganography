@@ -61,7 +61,6 @@ class Cox:
             pixels = np.asarray(image.convert('L'))
             # матрица квантования
             quantization_table = image.quantization
-
         height, width = pixels.shape[0:2]
 
         binary_seq = string_to_binary(message)
@@ -78,7 +77,7 @@ class Cox:
             start_point = start_points[i]
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
-            dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
+            dct_block = scipy.fftpack.dct(block)
             # изменение коэффициентов в матрице DCT
             mid_freq_coeffs = np.asarray([dct_block[5, 4], dct_block[4, 4]])
 
@@ -102,9 +101,7 @@ class Cox:
             dct_block[4, 4] = mid_freq_coeffs[1]
             # преобразование обратно в изображение
             # print(dct_block)
-            modified_block = scipy.fftpack.idct(scipy.fftpack.idct(dct_block, axis=0, norm='ortho'), axis=1,
-                                                norm='ortho')
-
+            modified_block = np.round(dct_block / np.array(quantization_table[0]).reshape(8, 8)).astype(np.uint8)
             pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8] = modified_block
 
         # сохранение изображения в формате JPEG
@@ -117,7 +114,8 @@ class Cox:
         with Image.open(new_image) as image:
             # получение матрицы пикселей
             pixels = np.asarray(image.convert('L'))
-
+            quantization_table = image.quantization
+        print(quantization_table)
         height, width = pixels.shape[0: 2]
 
         start_points = define_starts_of_blocks(height, width, 8)
@@ -129,7 +127,7 @@ class Cox:
         for start_point in start_points[:self.__occupancy]:
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
-            dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
+            dct_block = scipy.fftpack.dct(block) * np.array(quantization_table[0]).reshape(8, 8)
 
             mid_freq_coeffs = np.array([dct_block[5, 4], dct_block[4, 4]])
 
