@@ -1,6 +1,6 @@
 import io
-from dct import my_dct, my_idct
 import numpy as np
+import scipy
 from PIL import Image
 
 
@@ -51,14 +51,14 @@ def define_starts_of_blocks(height: int, width: int, n: int) -> list[tuple]:
 
 class Cox:
     def __init__(self):
-        self.__e: int = 10
+        self.__e: int = 2
         self.__occupancy = 0
 
     def embed(self, old_image: str, new_image: str, message: str, key: int) -> bool:
         # загрузка изображения
         with Image.open(old_image) as image:
             # получение матрицы пикселей
-            pixels = np.asarray(image.convert('L')).copy()
+            pixels = np.asarray(image.convert('L'))
             # матрица квантования
             quantization_table = image.quantization
 
@@ -78,28 +78,38 @@ class Cox:
             start_point = start_points[i]
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
-            dct_block = my_dct(block)
+            dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
+            print(len(dct_block))
             # изменение коэффициентов в матрице DCT
-            mid_freq_coeffs = np.asarray([dct_block[3, 4], dct_block[4, 3]])
+            mid_freq_coeffs = np.asarray([dct_block[4, 3], dct_block[3, 4]])
 
+            const = self.__e // 2
             if bit:
                 while np.abs(mid_freq_coeffs[0]) - np.abs(mid_freq_coeffs[1]) >= -self.__e:
-                    mid_freq_coeffs[1] = mid_freq_coeffs[1] + self.__e if mid_freq_coeffs[1] > 0 \
-                        else mid_freq_coeffs[1] - self.__e
+                    mid_freq_coeffs[0] = mid_freq_coeffs[0] - const if mid_freq_coeffs[0] > 0 \
+                        else mid_freq_coeffs[0] + const
+                    mid_freq_coeffs[1] = mid_freq_coeffs[1] + const if mid_freq_coeffs[1] > 0 \
+                        else mid_freq_coeffs[1] - const
                 assert np.abs(mid_freq_coeffs[0]) < np.abs(mid_freq_coeffs[1])
             else:
                 while np.abs(mid_freq_coeffs[0]) - np.abs(mid_freq_coeffs[1]) <= self.__e:
-                    mid_freq_coeffs[0] = mid_freq_coeffs[0] + self.__e if mid_freq_coeffs[0] > 0 \
-                        else mid_freq_coeffs[0] - self.__e
+                    mid_freq_coeffs[0] = mid_freq_coeffs[0] + const if mid_freq_coeffs[0] > 0 \
+                        else mid_freq_coeffs[0] - const
+                    mid_freq_coeffs[1] = mid_freq_coeffs[1] - const if mid_freq_coeffs[1] > 0 \
+                        else mid_freq_coeffs[1] + const
                 assert np.abs(mid_freq_coeffs[0]) > np.abs(mid_freq_coeffs[1])
+
+            dct_block[4, 3] = mid_freq_coeffs[0]
+            dct_block[3, 4] = mid_freq_coeffs[1]
             # преобразование обратно в изображение
             # print(dct_block)
-            modified_block = my_idct(dct_block)
-            # print(my_dct(modified_block))
-            # exit()
+            modified_block = scipy.fftpack.idct(scipy.fftpack.idct(dct_block, axis=0, norm='ortho'), axis=1,
+                                                norm='ortho')
+
             pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8] = modified_block
+
         # сохранение изображения в формате JPEG
-        Image.fromarray(pixels).save(new_image, qtables=quantization_table)
+        Image.fromarray(pixels).save(new_image, subsampling=0, quality=100, qtables=quantization_table)
         self.__occupancy = len(binary_seq)
         return True
 
@@ -107,7 +117,7 @@ class Cox:
         # загрузка изображения
         with Image.open(new_image) as image:
             # получение матрицы пикселей
-            pixels = np.asarray(image.convert('L')).copy()
+            pixels = np.asarray(image.convert('L'))
 
         height, width = pixels.shape[0: 2]
 
@@ -120,14 +130,13 @@ class Cox:
         for start_point in start_points[:self.__occupancy]:
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
-            dct_block = my_dct(block)
-            # print(dct_block)
-            # exit()
-            mid_freq_coeffs = np.asarray([dct_block[3, 4], dct_block[4, 3]])
+            dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
+
+            mid_freq_coeffs = np.array([dct_block[4, 3], dct_block[3, 4]])
 
             if np.abs(mid_freq_coeffs[0]) > np.abs(mid_freq_coeffs[1]):
                 buffer_binary.write('0')
-            elif np.abs(mid_freq_coeffs[0]) < np.abs(mid_freq_coeffs[1]):
+            elif np.abs(mid_freq_coeffs[0]) <= np.abs(mid_freq_coeffs[1]):
                 buffer_binary.write('1')
 
         print(buffer_binary.getvalue())
@@ -137,7 +146,7 @@ class Cox:
 def main():
     key = 1241
 
-    old_image = 'input/old_image.jpg'
+    old_image = 'input/Abstract Wallpaper (3).jpg'
     new_image = 'output/new_image.jpg'
 
     with open('message.txt', mode='r', encoding='utf-8') as file:
@@ -149,6 +158,10 @@ def main():
     print('Ваше сообщение:\n{}'.format(recovered_message))
 
     metrics(old_image, new_image)
+
+    bin_original = np.array(list(map(int, string_to_binary(message))))
+    bin_recovered = np.array(list(map(int, string_to_binary(recovered_message))))
+    print(np.mean(bin_original == bin_recovered))
 
 
 if __name__ == '__main__':
