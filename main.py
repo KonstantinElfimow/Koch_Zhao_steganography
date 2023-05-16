@@ -79,9 +79,8 @@ class Cox:
             block = pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8].copy()
             # применение DCT
             dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
-            print(len(dct_block))
             # изменение коэффициентов в матрице DCT
-            mid_freq_coeffs = np.asarray([dct_block[4, 3], dct_block[3, 4]])
+            mid_freq_coeffs = np.asarray([dct_block[5, 4], dct_block[4, 4]])
 
             const = self.__e // 2
             if bit:
@@ -99,8 +98,8 @@ class Cox:
                         else mid_freq_coeffs[1] + const
                 assert np.abs(mid_freq_coeffs[0]) > np.abs(mid_freq_coeffs[1])
 
-            dct_block[4, 3] = mid_freq_coeffs[0]
-            dct_block[3, 4] = mid_freq_coeffs[1]
+            dct_block[5, 4] = mid_freq_coeffs[0]
+            dct_block[4, 4] = mid_freq_coeffs[1]
             # преобразование обратно в изображение
             # print(dct_block)
             modified_block = scipy.fftpack.idct(scipy.fftpack.idct(dct_block, axis=0, norm='ortho'), axis=1,
@@ -109,7 +108,7 @@ class Cox:
             pixels[start_point[0]: start_point[0] + 8, start_point[1]: start_point[1] + 8] = modified_block
 
         # сохранение изображения в формате JPEG
-        Image.fromarray(pixels).save(new_image, subsampling=0, quality=100, qtables=quantization_table)
+        Image.fromarray(pixels).save(new_image, qtables=quantization_table)
         self.__occupancy = len(binary_seq)
         return True
 
@@ -132,7 +131,7 @@ class Cox:
             # применение DCT
             dct_block = scipy.fftpack.dct(scipy.fftpack.dct(block, axis=0, norm='ortho'), axis=1, norm='ortho')
 
-            mid_freq_coeffs = np.array([dct_block[4, 3], dct_block[3, 4]])
+            mid_freq_coeffs = np.array([dct_block[5, 4], dct_block[4, 4]])
 
             if np.abs(mid_freq_coeffs[0]) > np.abs(mid_freq_coeffs[1]):
                 buffer_binary.write('0')
